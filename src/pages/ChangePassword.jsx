@@ -7,9 +7,12 @@ import {
   InputAdornment,
   IconButton,
   Paper,
-  Grid
+  Grid,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import { Visibility, VisibilityOff, Lock } from '@mui/icons-material';
+import axios from '../utlis/axios'; // <-- axios with token interceptor
 
 const ChangePassword = () => {
   const [form, setForm] = useState({
@@ -24,6 +27,9 @@ const ChangePassword = () => {
     confirm: false,
   });
 
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState({ open: false, type: '', message: '' });
+
   const toggleVisibility = (field) => {
     setShowPassword((prev) => ({ ...prev, [field]: !prev[field] }));
   };
@@ -32,16 +38,35 @@ const ChangePassword = () => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (form.newPassword !== form.confirmPassword) {
-      alert('New passwords do not match');
-      return;
+      return setAlert({ open: true, type: 'error', message: 'New passwords do not match' });
     }
 
-    // TODO: Send form to backend
-    console.log(form);
+    setLoading(true);
+    try {
+      const res = await axios.post('/auth/change-password', {
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword
+      });
+
+      setAlert({ open: true, type: 'success', message: 'Password updated successfully!' });
+      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err) {
+      const messageMap = {
+        IncorrectCurrentPassword: 'Incorrect current password',
+        NewPasswordSameAsOld: 'New password cannot be same as old',
+        MissingFields: 'Please fill all fields',
+        ServerError: 'Something went wrong'
+      };
+
+      const msg = messageMap[err.response?.data] || 'Failed to update password';
+      setAlert({ open: true, type: 'error', message: msg });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -53,89 +78,46 @@ const ChangePassword = () => {
       <Paper elevation={3} sx={{ p: 4, borderRadius: 2, maxWidth: 600 }}>
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Current Password"
-                type={showPassword.current ? 'text' : 'password'}
-                name="currentPassword"
-                value={form.currentPassword}
-                onChange={handleChange}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => toggleVisibility('current')}>
-                        {showPassword.current ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="New Password"
-                type={showPassword.new ? 'text' : 'password'}
-                name="newPassword"
-                value={form.newPassword}
-                onChange={handleChange}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => toggleVisibility('new')}>
-                        {showPassword.new ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Confirm New Password"
-                type={showPassword.confirm ? 'text' : 'password'}
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => toggleVisibility('confirm')}>
-                        {showPassword.confirm ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Grid>
+            {['currentPassword', 'newPassword', 'confirmPassword'].map((field) => (
+              <Grid item xs={12} key={field}>
+                <TextField
+                  fullWidth
+                  label={
+                    field === 'currentPassword'
+                      ? 'Current Password'
+                      : field === 'newPassword'
+                      ? 'New Password'
+                      : 'Confirm New Password'
+                  }
+                  type={showPassword[field.split('Password')[0]] ? 'text' : 'password'}
+                  name={field}
+                  value={form[field]}
+                  onChange={handleChange}
+                  required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => toggleVisibility(field.split('Password')[0])}>
+                          {showPassword[field.split('Password')[0]] ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+            ))}
 
             <Grid item xs={12}>
               <Button
                 variant="contained"
                 type="submit"
                 fullWidth
+                disabled={loading}
                 sx={{
                   py: 1.5,
                   borderRadius: 2,
@@ -143,12 +125,23 @@ const ChangePassword = () => {
                   fontWeight: 'bold',
                 }}
               >
-                Update Password
+                {loading ? 'Updating...' : 'Update Password'}
               </Button>
             </Grid>
           </Grid>
         </form>
       </Paper>
+
+      <Snackbar
+        open={alert.open}
+        autoHideDuration={4000}
+        onClose={() => setAlert({ ...alert, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={alert.type} onClose={() => setAlert({ ...alert, open: false })}>
+          {alert.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -9,8 +9,11 @@ import {
     IconButton
 } from '@mui/material';
 import { Visibility, VisibilityOff, Email, Lock } from '@mui/icons-material';
+import axios from '../utlis/axios';
+import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
+    const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
 
@@ -20,10 +23,41 @@ const Login = () => {
 
     const togglePasswordVisibility = () => setShowPassword((prev) => !prev);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log(form);
-    };
+    
+        try {
+          const res = await axios.post('https://meanointwork-backend.onrender.com/api/auth/login', form);
+          const { token, status } = res.data;
+    
+          localStorage.setItem('token', token);
+
+          localStorage.setItem('loginStatus', status);
+
+            localStorage.setItem('email', form.email);
+    
+          if (status === 'superAdminUser') {
+            navigate('/dashboard'); // or a dedicated admin page
+          } else if (status === 'ValidUserPlan') {
+            navigate('/dashboard');
+          } else if (status === 'HomeValidUserPlan') {
+            navigate('/dashboard/expert'); // optional expert section
+          } else if (status === 'AlreadyLoginExist') {
+            alert('User Already Logged In. Are you sure you want to Logout?');
+          } else if (status === 'workNotAssign') {
+            alert('Sorry! Your work plan is not assigned. Please contact admin.');
+          } else if (status === 'PlanExpire' || status === 'isDeactivated') {
+            alert('Your work plan is expired or deactivated.');
+          } else if (status === 'LoginDetailsNotMatch') {
+            alert('Email or Password is incorrect.');
+          } else {
+            alert('Unexpected server response');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Server error. Please try again later.');
+        }
+      };
 
     return (
         <Box

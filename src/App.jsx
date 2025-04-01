@@ -5,7 +5,7 @@ import Dashboard from './pages/Dashboard';
 import ViewDetails from './pages/ViewDetails';
 import ChangePassword from './pages/ChangePassword';
 import StartWork from './pages/StartWork';
-// import NotFound from './pages/NotFound';
+import NotFound from './pages/NotFound';
 import TaskEditor from './pages/TaskEditor';
 
 function App() {
@@ -20,7 +20,7 @@ function App() {
           <Route path="change-password" element={<ChangePassword />} />
           <Route path="start-work" element={<StartWork />} />
         </Route>
-        {/* <Route path="*" element={<NotFound />} /> */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

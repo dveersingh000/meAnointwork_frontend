@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const userEmail = "stkishan45@gmail.com"; // Replace with dynamic data later
+  const userEmail = localStorage.getItem('email');
 
   const tiles = [
     {
