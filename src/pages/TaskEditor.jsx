@@ -1,104 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Button,
-  Typography,
-  TextField,
-  Grid,
-  Paper
+  Box, Button, Typography, TextField, Grid, Paper, CircularProgress
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from '../utlis/axios';
 
 const TaskEditor = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // pageName
   const navigate = useNavigate();
 
-  const [isEditable, setIsEditable] = useState(true);
+  const [task, setTask] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState('');
+  const [isEditable, setIsEditable] = useState(false);
+  const [accuracy, setAccuracy] = useState(null);
 
-  // Dummy paragraph – replace with API call later
-  const [taskText] = useState(
-    `Above the floor still hovered the thin gray cloud... [Full paragraph here]`
-  );
+  useEffect(() => {
+    const fetchTask = async () => {
+      try {
+        const res = await axios.get(`/user/tasks/${id}`);
+        setTask(res.data);
+      } catch (err) {
+        console.error('Error fetching task:', err);
+        alert('Failed to load task');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTask();
+  }, [id]);
 
-  const handleSave = () => {
-    alert(`Saved text for page ${id}:\n${inputText}`);
-    // TODO: Save via API
+  const handleSave = async () => {
+    if (!inputText.trim()) return alert('Please type something before saving.');
+
+    try {
+      const res = await axios.post(`/user/tasks/${task._id}/submit`, { inputText });
+
+      const { accuracy, plagiarism, message } = res.data;
+
+      setAccuracy(accuracy);
+      setIsEditable(false);
+
+      if (accuracy < 80) {
+        alert(`⚠️ Accuracy is too low (${accuracy}%). Minimum required: 80%`);
+      } else {
+        alert(`✅ Task saved successfully! Accuracy: ${accuracy}%.`);
+      }
+
+      if (plagiarism) {
+        console.warn('Plagiarism Detected:', plagiarism);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save task');
+    }
   };
 
-  const handleClose = () => {
-    navigate('/dashboard/start-work');
-  };
+  const handleClose = () => navigate('/dashboard/start-work');
+
+  if (loading) return <CircularProgress />;
+  if (!task) return <Typography>Task not found.</Typography>;
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>
-        Page {id}
-      </Typography>
+      <Typography variant="h6" gutterBottom>Page {task.pageName}</Typography>
 
       <Paper elevation={3} sx={{ p: 2 }}>
         <Grid container spacing={2}>
-          {/* Left Paragraph */}
+          {/* Task Display */}
           <Grid item xs={12} md={6}>
+            <Typography variant="subtitle1" gutterBottom>Task Content</Typography>
             <Box
               sx={{
-                height: 400,
-                overflowY: 'auto',
-                p: 2,
-                backgroundColor: '#fafafa',
-                fontFamily: 'monospace',
-                whiteSpace: 'pre-wrap',
-                border: '1px solid #ccc',
-                borderRadius: 1
+                height: 450, overflowY: 'auto', backgroundColor: '#fafafa',
+                border: '1px solid #ccc', p: 2, borderRadius: 1
               }}
             >
-              {taskText}
+              {task.type === 'image' ? (
+                <img
+                  src={`${import.meta.env.VITE_BASE_URL}/uploads/${task.filename}`}
+                  alt={task.pageName}
+                  style={{ width: '100%' }}
+                  onContextMenu={(e) => e.preventDefault()}
+                  draggable={false}
+                />
+              ) : (
+                <Typography sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+                  {task.content}
+                </Typography>
+              )}
             </Box>
           </Grid>
 
-          {/* Right Input */}
+          {/* User Input */}
           <Grid item xs={12} md={6}>
-            <Typography variant="subtitle1" gutterBottom>
-              Enter the Text here :
-            </Typography>
-
+            <Typography variant="subtitle1" gutterBottom>Enter the Text here :</Typography>
             <TextField
-              multiline
-              fullWidth
-              rows={18}
+              multiline fullWidth rows={20}
+              placeholder="Start typing here..."
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Start typing..."
               disabled={!isEditable}
-              sx={{ backgroundColor: '#fdfdfd' }}
+              sx={{ backgroundColor: '#fff' }}
+              inputProps={{ spellCheck: false, autoComplete: 'off' }}
             />
           </Grid>
         </Grid>
 
         {/* Buttons */}
         <Box mt={3} display="flex" justifyContent="center" gap={2}>
-          <Button
-            variant="contained"
-            onClick={() => setIsEditable(true)}
-            sx={{ backgroundColor: '#00bcd4', width: 100 }}
-          >
-            EDIT
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            sx={{ backgroundColor: '#90a4ae', width: 100 }}
-          >
-            SAVE
-          </Button>
-          <Button
-            variant="contained"
-            color="info"
-            onClick={handleClose}
-            sx={{ backgroundColor: '#00bcd4', width: 100 }}
-          >
-            CLOSE
-          </Button>
+          <Button variant="contained" onClick={() => setIsEditable(true)} disabled={isEditable}
+            sx={{ backgroundColor: '#00bcd4', width: 100 }}>EDIT</Button>
+          <Button variant="contained" onClick={handleSave} disabled={!isEditable}
+            sx={{ backgroundColor: '#90a4ae', width: 100 }}>SAVE</Button>
+          <Button variant="contained" color="info" onClick={handleClose}
+            sx={{ backgroundColor: '#00bcd4', width: 100 }}>CLOSE</Button>
         </Box>
       </Paper>
     </Box>

@@ -37,7 +37,7 @@ const Login = () => {
             localStorage.setItem('email', form.email);
     
           if (status === 'superAdminUser') {
-            navigate('/dashboard'); // or a dedicated admin page
+            navigate('/admin'); // or a dedicated admin page
           } else if (status === 'ValidUserPlan') {
             navigate('/dashboard');
           } else if (status === 'HomeValidUserPlan') {

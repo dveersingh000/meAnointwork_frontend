@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const instance = axios.create({
   baseURL: 'https://meanointwork-backend.onrender.com/api/',
+  // baseURL: 'http://localhost:3000/api/',
 });
 
 instance.interceptors.request.use((config) => {
