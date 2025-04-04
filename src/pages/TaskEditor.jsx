@@ -20,33 +20,36 @@ const TaskEditor = () => {
       try {
         const res = await axios.get(`/user/tasks/${id}`);
         setTask(res.data);
+  
+        const draft = await axios.get(`/user/tasks/${id}/saved`);
+        if (draft.data?.inputText) setInputText(draft.data.inputText);
       } catch (err) {
-        console.error('Error fetching task:', err);
-        alert('Failed to load task');
+        console.error('Error:', err);
       } finally {
         setLoading(false);
       }
     };
+  
     fetchTask();
   }, [id]);
 
   const handleSave = async () => {
     if (!inputText.trim()) return alert('Please type something before saving.');
-
+  
     try {
-      const res = await axios.post(`/user/tasks/${task._id}/submit`, { inputText });
-
+      const res = await axios.post(`/user/tasks/${task._id}/save`, { inputText });
+  
       const { accuracy, plagiarism, message } = res.data;
-
+  
       setAccuracy(accuracy);
       setIsEditable(false);
-
+  
       if (accuracy < 80) {
-        alert(`⚠️ Accuracy is too low (${accuracy}%). Minimum required: 80%`);
+        alert(`⚠️ Task saved with accuracy ${accuracy}%. You can edit later to improve it.`);
       } else {
-        alert(`✅ Task saved successfully! Accuracy: ${accuracy}%.`);
+        alert(`✅ Task saved successfully! `);
       }
-
+  
       if (plagiarism) {
         console.warn('Plagiarism Detected:', plagiarism);
       }
@@ -55,6 +58,7 @@ const TaskEditor = () => {
       alert('Failed to save task');
     }
   };
+  
 
   const handleClose = () => navigate('/dashboard/start-work');
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, Select, MenuItem, TextField, Paper
+  Box, Typography, Button, Select, MenuItem, TextField, Paper, CircularProgress, Snackbar, Alert
 } from '@mui/material';
 import axios from '../utlis/axios';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,8 @@ const StartWork = () => {
   const [rowsPerPage, setRowsPerPage] = useState(100);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [alert, setAlert] = useState({ open: false, message: '', severity: 'success' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,6 +25,24 @@ const StartWork = () => {
     };
     fetchTasks();
   }, []);
+
+  const handleSubmitAll = async () => {
+    if (!window.confirm('Are you sure you want to submit all tasks? Once submitted, they cannot be edited.')) return;
+
+    setLoading(true);
+    try {
+      const res = await axios.post('/user/submit-all');
+      setAlert({ open: true, message: res.data.message, severity: 'success' });
+    } catch (err) {
+      setAlert({
+        open: true,
+        message: err?.response?.data?.message || 'Submission failed',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filtered = tasks.filter((row) =>
     row.pageName.toString().includes(search)
@@ -43,12 +63,19 @@ const StartWork = () => {
 
   return (
     <Box>
+      {/* Submit Button */}
       <Box display="flex" justifyContent="center" mb={2}>
-        <Button variant="contained" sx={{ backgroundColor: '#00bcd4', fontWeight: 'bold' }}>
-          SUBMIT WORK
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: '#00bcd4', fontWeight: 'bold' }}
+          onClick={handleSubmitAll}
+          disabled={loading}
+        >
+          {loading ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'SUBMIT WORK'}
         </Button>
       </Box>
 
+      {/* Table + Filters */}
       <Paper elevation={3}>
         <Box display="flex" justifyContent="space-between" alignItems="center" p={2} sx={{ borderBottom: '1px solid #ccc' }}>
           <Box display="flex" alignItems="center" gap={1}>
@@ -79,6 +106,7 @@ const StartWork = () => {
           />
         </Box>
 
+        {/* Header Row */}
         <Box sx={{
           backgroundColor: '#f44336',
           color: '#fff',
@@ -92,6 +120,7 @@ const StartWork = () => {
           <Box flex={2}>ACTION</Box>
         </Box>
 
+        {/* Task Rows */}
         <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
           {paginated.map((task, idx) => (
             <Box
@@ -121,6 +150,7 @@ const StartWork = () => {
           ))}
         </Box>
 
+        {/* Pagination */}
         <Box display="flex" justifyContent="space-between" alignItems="center" p={2} sx={{ borderTop: '1px solid #ccc' }}>
           <Typography>
             Showing {page * rowsPerPage + 1} to{' '}
@@ -158,6 +188,18 @@ const StartWork = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Snackbar Feedback */}
+      <Snackbar
+        open={alert.open}
+        autoHideDuration={4000}
+        onClose={() => setAlert({ ...alert, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={alert.severity} onClose={() => setAlert({ ...alert, open: false })}>
+          {alert.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
